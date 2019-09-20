@@ -26,6 +26,35 @@ with open('data/housing.txt','r') as fin:
 
 #转化为numpy类型的数组
 housing_data_np=np.array(housing_data,dtype=np.float32)
+#!/usr/bin/python
+#encoding:utf-8
+"""
+@author:cheney
+@file:Demo30_PredictHousePrice.py
+@time:2019/9/19 22:13
+"""
+
+import torch
+import torch.nn as nn
+from torch.autograd import Variable
+import numpy as np
+import torch.optim as optim
+import torch.utils.data as data
+from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+
+np.set_printoptions(suppress=True)
+
+#设置设备
+device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#读入数据
+housing_data=[]
+with open('data/housing.txt','r') as fin:
+    for line in fin.readlines():
+        housing_data.append(line.strip().split())
+
+#转化为numpy类型的数组
+housing_data_np=np.array(housing_data,dtype=np.float32)
 
 #转化成toser
 dataset=torch.from_numpy(housing_data_np).float()
@@ -59,7 +88,7 @@ class DNN(nn.Module):
 
 net=DNN().to(device)
 lr=1e-3
-epochs=1000
+epochs=101
 #定义优化器，使用MSE
 criterion=nn.MSELoss().to(device)
 optimizer=torch.optim.Adam(net.parameters(),lr=lr)
@@ -92,3 +121,29 @@ for epoch in range(epochs):
             test_loss += loss.item()
 
         print('epoch:{},Train Loss:{:.5f},Test Loss:{:.5f}'.format(epoch, train_loss / y.shape[0],test_loss/y_t.shape[0]))
+
+
+
+#最后画出预测与实际对比图
+real=[]
+pred=[]
+for min_data in test_data:
+    x_t = min_data[:, :-1]
+    y_t = min_data[:, -1]
+    x_t= Variable(x_t).to(device)
+    y_t= Variable(y_t).to(device)
+    real.append(y_t.cpu().detach().numpy().tolist())
+    out = net(x_t)
+    out = out.squeeze(1)
+    pred.append(out.cpu().detach().numpy().tolist())
+    loss = criterion(out, y_t)
+    test_loss += loss.item()
+
+real=real[0]
+pred=pred[0]
+x=np.linspace(-10,10,102)
+
+plt.plot(x,real,label='real price')
+plt.plot(x,pred,label='pred price')
+plt.legend(loc='best')
+plt.show()
